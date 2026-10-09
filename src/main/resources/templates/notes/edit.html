@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit note - Faculty Notes Publishing System</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<header>
+  <h1>Faculty Notes Publishing System</h1>
+  <nav>
+    <a th:href="@{/}" id="nav-dashboard">Dashboard</a>
+    <a th:href="@{/notes}" id="nav-notes">Notes</a>
+    <a th:href="@{/notes/new}" id="nav-new">New note</a>
+  </nav>
+</header>
+<main>
+  <h2>Edit note</h2>
+  <form method="post" th:action="@{/notes/{id}(id=${note.id})}" th:object="${note}">
+    <label for="title">Title</label>
+    <input type="text" id="title" th:field="*{title}">
+    <div class="error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">Title error</div>
+
+    <label for="subject">Subject</label>
+    <input type="text" id="subject" th:field="*{subject}">
+    <div class="error" th:if="${#fields.hasErrors('subject')}" th:errors="*{subject}">Subject error</div>
+
+    <label for="author">Author (cannot be changed)</label>
+    <input type="text" id="author" th:field="*{author}" readonly>
+
+    <label for="content">Content</label>
+    <textarea id="content" rows="8" th:field="*{content}"></textarea>
+    <div class="error" th:if="${#fields.hasErrors('content')}" th:errors="*{content}">Content error</div>
+
+    <button type="submit" id="save-button">Save changes</button>
+    <a class="btn" id="cancel-link" th:href="@{/notes/{id}(id=${note.id})}">Cancel</a>
+  </form>
+</main>
+</body>
+</html>
