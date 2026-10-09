@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -59,6 +60,7 @@ class NoteViewEditTest {
         Note n = saveNote(NoteStatus.DRAFT);
 
         mockMvc.perform(post("/notes/{id}", n.getId())
+                        .with(csrf())
                         .param("title", "Updated title")
                         .param("subject", "Networks")
                         .param("author", "Someone Else")
@@ -79,6 +81,7 @@ class NoteViewEditTest {
         Note n = saveNote(NoteStatus.DRAFT);
 
         mockMvc.perform(post("/notes/{id}", n.getId())
+                        .with(csrf())
                         .param("title", "")
                         .param("subject", "DevOps")
                         .param("author", "Prof. Test")
@@ -94,6 +97,7 @@ class NoteViewEditTest {
         Note n = saveNote(NoteStatus.PUBLISHED);
 
         mockMvc.perform(post("/notes/{id}", n.getId())
+                        .with(csrf())
                         .param("title", "Hacked title")
                         .param("subject", "DevOps")
                         .param("author", "Prof. Test")
