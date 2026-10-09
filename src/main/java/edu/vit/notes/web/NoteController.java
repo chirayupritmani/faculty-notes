@@ -95,6 +95,7 @@ public class NoteController {
             return "notes/edit";
         }
         // Only these three fields can change; author, status and dates stay as stored.
+           // TODO (Task 6): check that the logged-in user is the author once login and roles exist.
         existing.setTitle(form.getTitle());
         existing.setSubject(form.getSubject());
         existing.setContent(form.getContent());
