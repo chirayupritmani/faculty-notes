@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notes - Faculty Notes Publishing System</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<header>
+  <h1>Faculty Notes Publishing System</h1>
+  <nav>
+    <a th:href="@{/}" id="nav-dashboard">Dashboard</a>
+    <a th:href="@{/notes}" id="nav-notes">Notes</a>
+    <a th:href="@{/notes/new}" id="nav-new">New note</a>
+  </nav>
+</header>
+<main>
+  <h2>Notes</h2>
+  <form class="search" method="get" th:action="@{/notes}">
+    <input type="text" name="q" id="search-box" th:value="${q}" placeholder="Search by title, subject or keyword">
+    <button type="submit" id="search-button">Search</button>
+  </form>
+
+  <p class="empty" id="no-results" th:if="${#lists.isEmpty(notes)}">No notes found</p>
+
+  <table id="notes-table" th:unless="${#lists.isEmpty(notes)}">
+    <thead>
+      <tr><th>Title</th><th>Subject</th><th>Author</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr th:each="n : ${notes}">
+        <td th:text="${n.title}">Title</td>
+        <td th:text="${n.subject}">Subject</td>
+        <td th:text="${n.author}">Author</td>
+        <td th:text="${n.status.label}">Draft</td>
+      </tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

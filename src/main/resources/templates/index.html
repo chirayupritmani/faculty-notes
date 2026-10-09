@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Faculty Notes Publishing System</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<header>
+  <h1>Faculty Notes Publishing System</h1>
+  <nav>
+    <a th:href="@{/}" id="nav-dashboard">Dashboard</a>
+    <a th:href="@{/notes}" id="nav-notes">Notes</a>
+    <a th:href="@{/notes/new}" id="nav-new">New note</a>
+  </nav>
+</header>
+<main>
+  <h2>Dashboard</h2>
+  <div class="cards">
+    <div class="card"><span class="num" id="count-total" th:text="${totalCount}">0</span>Total notes</div>
+    <div class="card"><span class="num" id="count-draft" th:text="${draftCount}">0</span>Draft</div>
+    <div class="card"><span class="num" id="count-review" th:text="${reviewCount}">0</span>Under Review</div>
+    <div class="card"><span class="num" id="count-published" th:text="${publishedCount}">0</span>Published</div>
+  </div>
+</main>
+</body>
+</html>
