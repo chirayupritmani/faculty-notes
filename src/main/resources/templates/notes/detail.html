@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Note - Faculty Notes Publishing System</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<header>
+  <h1>Faculty Notes Publishing System</h1>
+  <nav>
+    <a th:href="@{/}" id="nav-dashboard">Dashboard</a>
+    <a th:href="@{/notes}" id="nav-notes">Notes</a>
+    <a th:href="@{/notes/new}" id="nav-new">New note</a>
+  </nav>
+</header>
+<main>
+  <h2 id="note-title" th:text="${note.title}">Title</h2>
+  <p>
+    <strong>Subject:</strong> <span id="note-subject" th:text="${note.subject}">Subject</span><br>
+    <strong>Author:</strong> <span id="note-author" th:text="${note.author}">Author</span><br>
+    <strong>Status:</strong> <span id="note-status" th:text="${note.status.label}">Draft</span><br>
+    <strong>Last updated:</strong>
+    <span id="note-updated" th:text="${#temporals.format(note.updatedAt, 'dd MMM yyyy HH:mm')}">date</span>
+  </p>
+  <div id="note-content" style="white-space: pre-wrap;" th:text="${note.content}">Content</div>
+  <p>
+    <a class="btn" id="edit-button" th:if="${note.status.name() == 'DRAFT'}"
+       th:href="@{/notes/{id}/edit(id=${note.id})}">Edit</a>
+    <a class="btn" id="back-link" th:href="@{/notes}">Back to notes</a>
+  </p>
+</main>
+</body>
+</html>
