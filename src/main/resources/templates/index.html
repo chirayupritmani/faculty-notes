@@ -23,6 +23,20 @@
     <div class="card"><span class="num" id="count-review" th:text="${reviewCount}">0</span>Under Review</div>
     <div class="card"><span class="num" id="count-published" th:text="${publishedCount}">0</span>Published</div>
   </div>
+
+  <h3>Notes by subject</h3>
+  <p id="no-subjects" th:if="${#lists.isEmpty(subjectCounts)}">No notes yet</p>
+  <table id="subject-table" th:unless="${#lists.isEmpty(subjectCounts)}">
+    <thead>
+      <tr><th>Subject</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr th:each="s : ${subjectCounts}">
+        <td th:text="${s.subject}">Subject</td>
+        <td th:text="${s.total}">0</td>
+      </tr>
+    </tbody>
+  </table>
 </main>
 </body>
 </html>

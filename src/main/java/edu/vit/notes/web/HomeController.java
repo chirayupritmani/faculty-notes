@@ -21,6 +21,7 @@ public class HomeController {
         model.addAttribute("reviewCount", notes.countByStatus(NoteStatus.UNDER_REVIEW));
         model.addAttribute("publishedCount", notes.countByStatus(NoteStatus.PUBLISHED));
         model.addAttribute("totalCount", notes.count());
+        model.addAttribute("subjectCounts", notes.countBySubject());
         return "index";
     }
 }
