@@ -24,12 +24,33 @@
     <strong>Last updated:</strong>
     <span id="note-updated" th:text="${#temporals.format(note.updatedAt, 'dd MMM yyyy HH:mm')}">date</span>
   </p>
+
+  <p class="error" id="flash-error" th:if="${error}" th:text="${error}">Error</p>
+  <p id="review-comment" th:if="${note.reviewComment != null}">
+    <strong>Reviewer comment:</strong> <span th:text="${note.reviewComment}">Comment</span>
+  </p>
+
   <div id="note-content" style="white-space: pre-wrap;" th:text="${note.content}">Content</div>
+
   <p>
-    <a class="btn" id="edit-button" th:if="${note.status.name() == 'DRAFT'}"
-       th:href="@{/notes/{id}/edit(id=${note.id})}">Edit</a>
+    <a class="btn" id="edit-button" th:if="${canEdit}" th:href="@{/notes/{id}/edit(id=${note.id})}">Edit</a>
     <a class="btn" id="back-link" th:href="@{/notes}">Back to notes</a>
   </p>
+
+  <form method="post" th:if="${canEdit}" th:action="@{/notes/{id}/submit(id=${note.id})}">
+    <button type="submit" id="submit-button">Submit for review</button>
+  </form>
+
+  <div th:if="${canReview}">
+    <form method="post" th:action="@{/notes/{id}/approve(id=${note.id})}">
+      <button type="submit" id="approve-button">Approve and publish</button>
+    </form>
+    <form method="post" th:action="@{/notes/{id}/return(id=${note.id})}">
+      <label for="comment">Comment (required to return)</label>
+      <textarea id="comment" name="comment" rows="3"></textarea>
+      <button type="submit" id="return-button">Return to author</button>
+    </form>
+  </div>
 </main>
 </body>
 </html>

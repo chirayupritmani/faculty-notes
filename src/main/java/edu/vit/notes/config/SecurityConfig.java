@@ -2,6 +2,7 @@ package edu.vit.notes.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -10,8 +11,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Task 6: every page needs a login, except the stylesheet, the error page
- * and the health endpoint used by the pipeline.
+ * Access rules:
+ * - everyone logged in can view pages;
+ * - only Faculty can create, edit and submit notes;
+ * - only Reviewers can approve or return notes.
  */
 @Configuration
 @EnableWebSecurity
@@ -22,6 +25,9 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/error", "/actuator/health", "/actuator/info").permitAll()
+                .requestMatchers(HttpMethod.GET, "/notes/new", "/notes/*/edit").hasRole("FACULTY")
+                .requestMatchers(HttpMethod.POST, "/notes", "/notes/*", "/notes/*/submit").hasRole("FACULTY")
+                .requestMatchers(HttpMethod.POST, "/notes/*/approve", "/notes/*/return").hasRole("REVIEWER")
                 .anyRequest().authenticated())
             .formLogin(Customizer.withDefaults())
             .logout(Customizer.withDefaults());

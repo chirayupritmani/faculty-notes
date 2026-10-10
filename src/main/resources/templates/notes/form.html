@@ -26,8 +26,8 @@
     <input type="text" id="subject" th:field="*{subject}">
     <div class="error" th:if="${#fields.hasErrors('subject')}" th:errors="*{subject}">Subject error</div>
 
-    <label for="author">Author</label>
-    <input type="text" id="author" th:field="*{author}">
+    <label for="author">Author (your name, set automatically)</label>
+    <input type="text" id="author" th:field="*{author}" readonly>
     <div class="error" th:if="${#fields.hasErrors('author')}" th:errors="*{author}">Author error</div>
 
     <label for="content">Content</label>
