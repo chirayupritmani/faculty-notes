@@ -11,7 +11,8 @@ Start-Sleep -Seconds $InitialDelaySeconds
 for ($i = 1; $i -le $Retries; $i++) {
     try {
         $response = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 5
-        if ($response.StatusCode -eq 200 -and $response.Content -match '"status":"UP"') {
+                   $text = if ($response.Content -is [byte[]]) { [System.Text.Encoding]::UTF8.GetString($response.Content) } else { [string]$response.Content }
+           if ($response.StatusCode -eq 200 -and $text -match '"status":"UP"') {
             Write-Host "Health check passed: $Url"
             exit 0
         }
