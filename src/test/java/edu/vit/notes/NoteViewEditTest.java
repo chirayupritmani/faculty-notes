@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@WithMockUser(roles = "FACULTY")
+@WithMockUser(username = "mehta", roles = "FACULTY")
 class NoteViewEditTest {
 
     @Autowired
@@ -35,7 +35,7 @@ class NoteViewEditTest {
         n.setTitle("Original title");
         n.setSubject("DevOps");
         n.setContent("Original content");
-        n.setAuthor("Prof. Test");
+        n.setAuthor("Prof. Mehta");
         n.setStatus(status);
         return repository.save(n);
     }
@@ -48,7 +48,7 @@ class NoteViewEditTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Original title")))
                 .andExpect(content().string(containsString("Original content")))
-                .andExpect(content().string(containsString("Prof. Test")));
+                .andExpect(content().string(containsString("Prof. Mehta")));
     }
 
     @Test
@@ -74,7 +74,7 @@ class NoteViewEditTest {
         assertEquals("Updated title", saved.getTitle());
         assertEquals("Networks", saved.getSubject());
         assertEquals("Updated content", saved.getContent());
-        assertEquals("Prof. Test", saved.getAuthor());      // author is not editable
+        assertEquals("Prof. Mehta", saved.getAuthor());      // author is not editable
         assertEquals(NoteStatus.DRAFT, saved.getStatus());
     }
 
@@ -86,7 +86,7 @@ class NoteViewEditTest {
                         .with(csrf())
                         .param("title", "")
                         .param("subject", "DevOps")
-                        .param("author", "Prof. Test")
+                        .param("author", "Prof. Mehta")
                         .param("content", "Some content"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Title is required")));
@@ -102,7 +102,7 @@ class NoteViewEditTest {
                         .with(csrf())
                         .param("title", "Hacked title")
                         .param("subject", "DevOps")
-                        .param("author", "Prof. Test")
+                        .param("author", "Prof. Mehta")
                         .param("content", "Hacked content"))
                 .andExpect(status().is3xxRedirection());
 
