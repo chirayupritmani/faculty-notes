@@ -47,6 +47,9 @@ public class Note {
     @Column(nullable = false, length = 20)
     private NoteStatus status = NoteStatus.DRAFT;
 
+    @Column(length = 1000)
+    private String reviewComment;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -81,6 +84,9 @@ public class Note {
 
     public NoteStatus getStatus() { return status; }
     public void setStatus(NoteStatus status) { this.status = status; }
+
+    public String getReviewComment() { return reviewComment; }
+    public void setReviewComment(String reviewComment) { this.reviewComment = reviewComment; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

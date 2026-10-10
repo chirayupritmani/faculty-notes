@@ -30,7 +30,7 @@
     </thead>
     <tbody>
       <tr th:each="n : ${notes}">
-        <td th:text="${n.title}">Title</td>
+        <td><a class="note-link" th:href="@{/notes/{id}(id=${n.id})}" th:text="${n.title}">Title</a></td>
         <td th:text="${n.subject}">Subject</td>
         <td th:text="${n.author}">Author</td>
         <td th:text="${n.status.label}">Draft</td>
