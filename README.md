@@ -74,3 +74,5 @@ pom.xml             Maven build
 | 3 | Requirements, architecture and setup | Done |
 | 4 | Git and GitHub initialisation | In progress |
 | 5 onwards | Features, Jenkins, Selenium, Docker, Ansible | Planned |
+
+Built and tested automatically by Jenkins.
