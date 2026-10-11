@@ -51,6 +51,20 @@ pipeline {
             }
         }
 
+        stage('Selenium UI Tests') {
+            steps {
+                // Starts the app on a random port and drives headless Chrome (mvn test -Pselenium).
+                // If any UI test fails, this stage fails and the Deploy stage is skipped.
+                bat 'call "%MVN%" -B test -Pselenium'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'target/surefire-reports/TEST-edu.vit.notes.ui.*.xml'
+                    archiveArtifacts artifacts: 'target/screenshots/*.png', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('Deploy') {
             steps {
                 script {
