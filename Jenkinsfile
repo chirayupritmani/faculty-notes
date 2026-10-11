@@ -21,6 +21,11 @@ pipeline {
         JAVA_HOME = 'C:\\Program Files\\Microsoft\\jdk-21.0.12.101-hotspot'
         MVN       = 'C:\\maven\\bin\\mvn.cmd'
         APP_NAME  = 'faculty-notes'
+        // Docker: local registry on port 5000, one version tag per build (1.0.<build number>)
+        IMAGE_NAME     = 'localhost:5000/faculty-notes'
+        IMAGE_VERSION  = "1.0.${BUILD_NUMBER}"
+        CONTAINER      = 'faculty-notes-app'
+        CONTAINER_PORT = '8085'
     }
 
     stages {
@@ -65,6 +70,32 @@ pipeline {
             }
         }
 
+        stage('Docker Build') {
+            steps {
+                // Versioned image from the WAR built in the Package stage
+                bat 'docker build -t %IMAGE_NAME%:%IMAGE_VERSION% -t %IMAGE_NAME%:latest .'
+                bat 'docker images %IMAGE_NAME%'
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                bat 'docker push %IMAGE_NAME%:%IMAGE_VERSION%'
+                bat 'docker push %IMAGE_NAME%:latest'
+            }
+        }
+
+        stage('Docker Deploy') {
+            steps {
+                // Remove the old container (it may not exist yet), then start a fresh one
+                bat(returnStatus: true, script: 'docker rm -f %CONTAINER%')
+                bat 'docker run -d --name %CONTAINER% -p %CONTAINER_PORT%:8080 %IMAGE_NAME%:%IMAGE_VERSION%'
+                bat 'powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\healthcheck.ps1 -Url http://localhost:%CONTAINER_PORT%/actuator/health'
+                bat 'docker ps --filter name=%CONTAINER%'
+                echo "Container ${env.CONTAINER} is running image ${env.IMAGE_NAME}:${env.IMAGE_VERSION} at http://localhost:${env.CONTAINER_PORT}/"
+            }
+        }
+
         stage('Deploy') {
             steps {
                 script {
@@ -86,7 +117,7 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline finished: build, package and deploy succeeded.'
+            echo 'Pipeline finished: build, tests, Docker image, container and Tomcat deploy succeeded.'
         }
         failure {
             echo 'Pipeline failed. Check the stage that turned red.'
