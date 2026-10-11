@@ -18,7 +18,7 @@
 <main>
   <h2>Notes</h2>
   <form class="search" method="get" th:action="@{/notes}">
-    <input type="text" name="q" id="search-box" th:value="${q}" placeholder="Search by title, subject or keyword">
+    <input type="text" name="query" id="search-box" th:value="${q}" placeholder="Search by title, subject or keyword">
     <button type="submit" id="search-button">Search</button>
   </form>
 
@@ -40,3 +40,4 @@
 </main>
 </body>
 </html>
+
