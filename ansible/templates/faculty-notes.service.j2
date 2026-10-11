@@ -1,0 +1,19 @@
+# Managed by Ansible - changes made by hand will be overwritten
+[Unit]
+Description=Faculty Notes Publishing System
+After=network.target
+
+[Service]
+User={{ app_user }}
+Group={{ app_group }}
+EnvironmentFile={{ config_dir }}/faculty-notes.env
+WorkingDirectory={{ app_home }}
+ExecStart=/usr/bin/java $JAVA_OPTS -jar {{ app_home }}/faculty-notes.war
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:{{ log_dir }}/faculty-notes.log
+StandardError=append:{{ log_dir }}/faculty-notes.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,125 @@
+---
+- name: Configure the Faculty Notes application node
+  hosts: app_nodes
+  become: true
+
+  vars:
+    service_name: faculty-notes
+    app_user: notesapp
+    app_group: notesapp
+    app_port: 8090
+    java_package: openjdk-21-jre-headless
+    app_home: /opt/faculty-notes
+    config_dir: /etc/faculty-notes
+    log_dir: /var/log/faculty-notes
+    # WAR built by Maven on the Windows side (visible inside WSL under /mnt/c)
+    war_source: /mnt/c/projects/faculty-notes/faculty-notes/target/faculty-notes.war
+
+  tasks:
+    # ---- packages ----
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - "{{ java_package }}"
+          - curl
+          - ca-certificates
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    # ---- user and group ----
+    - name: Create the application group
+      ansible.builtin.group:
+        name: "{{ app_group }}"
+        system: true
+
+    - name: Create the application user
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        system: true
+        home: "{{ app_home }}"
+        create_home: false
+        shell: /usr/sbin/nologin
+
+    # ---- folders ----
+    - name: Create application, configuration and log folders
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ app_group }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: "{{ app_home }}",   owner: "{{ app_user }}", mode: "0755" }
+        - { path: "{{ config_dir }}", owner: root,             mode: "0750" }
+        - { path: "{{ log_dir }}",    owner: "{{ app_user }}", mode: "0755" }
+
+    # ---- files ----
+    - name: Write the application configuration file
+      ansible.builtin.template:
+        src: faculty-notes.env.j2
+        dest: "{{ config_dir }}/faculty-notes.env"
+        owner: root
+        group: "{{ app_group }}"
+        mode: "0640"
+      notify: Restart faculty-notes
+
+    - name: Copy the application WAR
+      ansible.builtin.copy:
+        src: "{{ war_source }}"
+        dest: "{{ app_home }}/faculty-notes.war"
+        remote_src: true
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0644"
+      notify: Restart faculty-notes
+
+    # ---- service ----
+    - name: Install the systemd service file
+      ansible.builtin.template:
+        src: faculty-notes.service.j2
+        dest: "/etc/systemd/system/{{ service_name }}.service"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart faculty-notes
+
+    - name: Apply pending changes before the final service check
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable the service at boot and make sure it is running
+      ansible.builtin.systemd:
+        name: "{{ service_name }}"
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    # ---- port and health ----
+    - name: Wait until the application port is open
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ app_port }}"
+        timeout: 120
+
+    - name: Check the health endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/actuator/health"
+        return_content: true
+      register: health
+      until: health.status == 200
+      retries: 10
+      delay: 5
+
+    - name: Confirm the application reports UP
+      ansible.builtin.assert:
+        that:
+          - "'UP' in health.content"
+        success_msg: "Faculty Notes is UP on port {{ app_port }}"
+
+  handlers:
+    - name: Restart faculty-notes
+      ansible.builtin.systemd:
+        name: "{{ service_name }}"
+        state: restarted
+        daemon_reload: true
