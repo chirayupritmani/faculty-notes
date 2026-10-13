@@ -1,0 +1,73 @@
+---
+# Manual rollback: switch "current" and "previous" and restart (run it again to switch back).
+#
+#   ansible-playbook -i ansible/inventory.ini ansible/rollback.yml
+- name: Roll back to the previous Faculty Notes release
+  hosts: app_nodes
+  become: true
+
+  vars:
+    service_name: faculty-notes
+    app_port: 8090
+    app_home: /opt/faculty-notes
+    health_url: "http://127.0.0.1:{{ app_port }}/actuator/health"
+
+  tasks:
+    - name: Look at the current and previous release links
+      ansible.builtin.stat:
+        path: "{{ app_home }}/{{ item }}"
+        follow: false
+      loop: [current, previous]
+      register: links
+
+    - name: Check that there is a previous release to go back to
+      ansible.builtin.assert:
+        that:
+          - links.results[0].stat.islnk | default(false)
+          - links.results[1].stat.islnk | default(false)
+        fail_msg: "There is no previous release to roll back to."
+
+    - name: Remember both release folders
+      ansible.builtin.set_fact:
+        old_current: "{{ links.results[0].stat.lnk_source }}"
+        old_previous: "{{ links.results[1].stat.lnk_source }}"
+
+    - name: Point "current" at the previous release
+      ansible.builtin.file:
+        src: "{{ old_previous }}"
+        dest: "{{ app_home }}/current"
+        state: link
+        force: true
+
+    - name: Keep the release we left as "previous"
+      ansible.builtin.file:
+        src: "{{ old_current }}"
+        dest: "{{ app_home }}/previous"
+        state: link
+        force: true
+
+    - name: Restart the service
+      ansible.builtin.systemd:
+        name: "{{ service_name }}"
+        state: restarted
+
+    - name: Wait until the application port is open
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ app_port }}"
+        timeout: 60
+
+    - name: Check the health endpoint
+      ansible.builtin.uri:
+        url: "{{ health_url }}"
+        return_content: true
+      register: health
+      until: health.status == 200
+      retries: 10
+      delay: 5
+
+    - name: Confirm the application reports UP
+      ansible.builtin.assert:
+        that:
+          - "'UP' in health.content"
+        success_msg: "Rolled back from {{ old_current }} to {{ old_previous }}; the application is UP."
