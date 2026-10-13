@@ -1,0 +1,221 @@
+---
+# Provision the node and deploy one release. Safe to run again (idempotent).
+# If the new release does not become healthy, the previous release is restored.
+#
+#   ansible-playbook -i ansible/inventory.ini ansible/provision.yml \
+#       -e release=v1 -e war_source=/mnt/c/projects/faculty-notes/artifacts/faculty-notes-1.war
+- name: Provision the Faculty Notes node and deploy a release
+  hosts: app_nodes
+  become: true
+
+  vars:
+    service_name: faculty-notes
+    app_user: notesapp
+    app_group: notesapp
+    app_port: 8090
+    java_package: openjdk-21-jre-headless
+    app_home: /opt/faculty-notes
+    config_dir: /etc/faculty-notes
+    log_dir: /var/log/faculty-notes
+    release_dir: "{{ app_home }}/releases/{{ release }}"
+    health_url: "http://127.0.0.1:{{ app_port }}/actuator/health"
+
+  pre_tasks:
+    - name: Check that a release name and a WAR were given
+      ansible.builtin.assert:
+        that:
+          - release is defined
+          - war_source is defined
+        fail_msg: "Run with -e release=<name> -e war_source=<path to the WAR>"
+
+  tasks:
+    # ---- base environment ----
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - "{{ java_package }}"
+          - curl
+          - ca-certificates
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Create the application group
+      ansible.builtin.group:
+        name: "{{ app_group }}"
+        system: true
+
+    - name: Create the application user
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        system: true
+        home: "{{ app_home }}"
+        create_home: false
+        shell: /usr/sbin/nologin
+
+    - name: Create application, release, configuration and log folders
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ app_group }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: "{{ app_home }}",          owner: "{{ app_user }}", mode: "0755" }
+        - { path: "{{ app_home }}/releases", owner: "{{ app_user }}", mode: "0755" }
+        - { path: "{{ config_dir }}",        owner: root,             mode: "0750" }
+        - { path: "{{ log_dir }}",           owner: "{{ app_user }}", mode: "0755" }
+
+    - name: Write the application configuration file
+      ansible.builtin.template:
+        src: faculty-notes-release.env.j2
+        dest: "{{ config_dir }}/faculty-notes.env"
+        owner: root
+        group: "{{ app_group }}"
+        mode: "0640"
+      register: env_cfg
+
+    - name: Install the systemd service file
+      ansible.builtin.template:
+        src: faculty-notes-release.service.j2
+        dest: "/etc/systemd/system/{{ service_name }}.service"
+        owner: root
+        group: root
+        mode: "0644"
+      register: unit_file
+
+    # ---- remember what is running now (used for rollback) ----
+    - name: Look at the current release link
+      ansible.builtin.stat:
+        path: "{{ app_home }}/current"
+        follow: false
+      register: current_link
+
+    - name: Remember the previous release
+      ansible.builtin.set_fact:
+        previous_release: "{{ current_link.stat.lnk_source if (current_link.stat.islnk | default(false)) else '' }}"
+
+    # ---- deploy the release, roll back if it is not healthy ----
+    - name: Deploy the release
+      block:
+        - name: Create the release folder
+          ansible.builtin.file:
+            path: "{{ release_dir }}"
+            state: directory
+            owner: "{{ app_user }}"
+            group: "{{ app_group }}"
+            mode: "0755"
+
+        - name: Copy the WAR into the release folder
+          ansible.builtin.copy:
+            src: "{{ war_source }}"
+            dest: "{{ release_dir }}/faculty-notes.war"
+            remote_src: true
+            owner: "{{ app_user }}"
+            group: "{{ app_group }}"
+            mode: "0644"
+          register: war_copy
+
+        - name: Point "current" at the release
+          ansible.builtin.file:
+            src: "{{ release_dir }}"
+            dest: "{{ app_home }}/current"
+            state: link
+            force: true
+          register: switch
+
+        - name: Restart the service when something changed
+          ansible.builtin.systemd:
+            name: "{{ service_name }}"
+            state: restarted
+            daemon_reload: true
+          when: env_cfg.changed or unit_file.changed or war_copy.changed or switch.changed
+
+        - name: Enable the service at boot and make sure it is running
+          ansible.builtin.systemd:
+            name: "{{ service_name }}"
+            enabled: true
+            state: started
+            daemon_reload: true
+
+        - name: Wait until the application port is open
+          ansible.builtin.wait_for:
+            host: 127.0.0.1
+            port: "{{ app_port }}"
+            timeout: 60
+
+        - name: Check the health endpoint
+          ansible.builtin.uri:
+            url: "{{ health_url }}"
+            return_content: true
+          register: health
+          until: health.status == 200
+          retries: 10
+          delay: 5
+
+        - name: Confirm the application reports UP
+          ansible.builtin.assert:
+            that:
+              - "'UP' in health.content"
+            success_msg: "Release {{ release }} is UP on port {{ app_port }}"
+
+        - name: Remember the previous release for rollback
+          ansible.builtin.file:
+            src: "{{ previous_release }}"
+            dest: "{{ app_home }}/previous"
+            state: link
+            force: true
+          when: previous_release | length > 0 and previous_release != release_dir
+
+      rescue:
+        - name: Report the failed release
+          ansible.builtin.debug:
+            msg: "Release {{ release }} is not healthy: {{ ansible_failed_result.msg | default('see service log') }}"
+
+        - name: Roll back - point "current" at the previous release
+          ansible.builtin.file:
+            src: "{{ previous_release }}"
+            dest: "{{ app_home }}/current"
+            state: link
+            force: true
+          when: previous_release | length > 0
+
+        - name: Roll back - restart the service
+          ansible.builtin.systemd:
+            name: "{{ service_name }}"
+            state: restarted
+            daemon_reload: true
+          when: previous_release | length > 0
+
+        - name: Roll back - wait for the application port
+          ansible.builtin.wait_for:
+            host: 127.0.0.1
+            port: "{{ app_port }}"
+            timeout: 60
+          when: previous_release | length > 0
+
+        - name: Roll back - check the health endpoint
+          ansible.builtin.uri:
+            url: "{{ health_url }}"
+            return_content: true
+          register: rollback_health
+          until: rollback_health.status == 200
+          retries: 10
+          delay: 5
+          when: previous_release | length > 0
+
+        - name: Remove the failed release folder
+          ansible.builtin.file:
+            path: "{{ release_dir }}"
+            state: absent
+          when: previous_release | length > 0
+
+        - name: Show the rollback result
+          ansible.builtin.debug:
+            msg: "ROLLED BACK to {{ previous_release }}; the application is healthy again."
+          when: previous_release | length > 0
+
+        - name: Mark the deployment as failed
+          ansible.builtin.fail:
+            msg: "Release {{ release }} failed the health check. Previous release restored: {{ previous_release | default('none') }}"

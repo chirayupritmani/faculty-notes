@@ -1,0 +1,61 @@
+---
+# Return the node to a clean state (no service, user, folders, files or Java).
+#
+#   ansible-playbook -i ansible/inventory.ini ansible/teardown.yml
+- name: Remove the Faculty Notes application from the node
+  hosts: app_nodes
+  become: true
+
+  vars:
+    service_name: faculty-notes
+    app_user: notesapp
+    app_group: notesapp
+    java_package: openjdk-21-jre-headless
+
+  tasks:
+    - name: Look for the service file
+      ansible.builtin.stat:
+        path: "/etc/systemd/system/{{ service_name }}.service"
+      register: unit
+
+    - name: Stop and disable the service
+      ansible.builtin.systemd:
+        name: "{{ service_name }}"
+        state: stopped
+        enabled: false
+      when: unit.stat.exists
+
+    - name: Remove the service file
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ service_name }}.service"
+        state: absent
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Remove application, configuration and log folders
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /opt/faculty-notes
+        - /etc/faculty-notes
+        - /var/log/faculty-notes
+
+    - name: Remove the application user
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        state: absent
+
+    - name: Remove the application group
+      ansible.builtin.group:
+        name: "{{ app_group }}"
+        state: absent
+
+    - name: Remove the Java runtime
+      ansible.builtin.apt:
+        name: "{{ java_package }}"
+        state: absent
+        purge: true
+        autoremove: true
